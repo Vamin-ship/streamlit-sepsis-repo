@@ -21,7 +21,7 @@ from sklearn.metrics import confusion_matrix, classification_report, accuracy_sc
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 from xgboost import XGBClassifier
 import xgboost as xgb
-import gdown
+
 
 
 
@@ -73,28 +73,11 @@ html_code = f"""
 """
 
 st.markdown(html_code, unsafe_allow_html=True) 
-# Download the dataset from Google Drive
-file_id = '18UZEou3CZDMrf60652Hj2N5bO2YWn9Pi'
-url = f'https://drive.google.com/uc?id={file_id}'
-output = 'Dataset 2.csv'
-gdown.download(url, output, quiet=False) 
-# Load the dataset
-data = pd.read_csv("Dataset 2.csv")
+# Load the balanced and shuffled dataset directly
+df = pd.read_csv("balanced_shuffled_sepsis_dataset.csv")
+
 # Print columns to verify their names and structure
-print("Columns of 'data':", data.columns)
-# Drop the 'Unnamed: 0' and 'Patient_ID' columns
-data.drop(['Unnamed: 0', 'Patient_ID'], axis=1, inplace=True)
-# Separate samples for sepsis and non-sepsis
-non_sepsis = data[data['SepsisLabel'] == 0].sample(80000, random_state=42).reset_index(drop=True)
-sepsis = data[data['SepsisLabel'] == 1].sample(20000, random_state=42).reset_index(drop=True)
-# Concatenate the balanced subsets
-df = pd.concat([non_sepsis, sepsis], ignore_index=True)
-# Shuffle the concatenated DataFrame
-df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-# Save the resulting DataFrame to a CSV file
-df.to_csv('balanced_shuffled_sepsis_dataset.csv', index=False)
-# Print message to indicate success
-print("The balanced and shuffled dataset has been saved to 'balanced_shuffled_sepsis_dataset.csv'")
+print("Columns of 'data':", df.columns)
 # Convert values in 'Gender' column
 df['Gender'] = df['Gender'].map({1: 'Male', 0: 'Female'})
 
