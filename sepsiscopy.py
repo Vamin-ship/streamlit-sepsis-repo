@@ -73,33 +73,8 @@ html_code = f"""
 """
 
 st.markdown(html_code, unsafe_allow_html=True) 
-# Load the balanced and shuffled dataset directly
-df = pd.read_csv("balanced_shuffled_sepsis_dataset.csv")
-
-# Print columns to verify their names and structure
-print("Columns of 'data':", df.columns)
-# Convert values in 'Gender' column
-df['Gender'] = df['Gender'].map({1: 'Male', 0: 'Female'})
-
-# Convert values in 'SepsisLabel' column
-df['SepsisLabel'] = df['SepsisLabel'].map({1: 'Sepsis', 0: 'No Sepsis'})
-
-# Convert numerical values to categorical labels in 'Unit1' and 'Unit2' columns
-df['Unit1'] = df['Unit1'].map({1: 'Medical ICU', 0: 'Surgical ICU'}).fillna('Other ICU')
-df['Unit2'] = df['Unit2'].map({1: 'Surgical ICU', 0: 'Medical ICU'}).fillna('Other ICU')
-
-# Print unique values to check
-print("Unique values in 'Gender' column:", df['Gender'].unique())
-print("Unique values in 'SepsisLabel' column:", df['SepsisLabel'].unique())
-print("Unique values in 'Unit1' column:", df['Unit1'].unique())
-print("Unique values in 'Unit2' column:", df['Unit2'].unique())
-    # Display the information about the dataset
-print("\nInformation about the dataset:")
-print(df.info())
-# Display descriptive statistics for numerical columns
-print("\nDescriptive statistics for numerical columns:")
-print(df.describe().T)
-
+# Load the preprocessed dataset
+df = pd.read_csv("preprocessed_balanced_shuffled_sepsis_dataset.csv")
 # Calculate percentage of missing values for df
 missing_percentage = (df.isnull().sum() / len(df)) * 100
 # Print the percentage of missing values
