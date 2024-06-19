@@ -484,276 +484,58 @@ st.markdown("""
         Machine Learning Insights
     </h2>
 """, unsafe_allow_html=True)
-X = df.drop(['SepsisLabel'], axis=1)  # Features
-y = df['SepsisLabel']  # Target variable
+# Separate features (X) and target variable (y)
+X = df.drop(['SepsisLabel'], axis=1)
+y = df['SepsisLabel']
+
 # Split the data into training and temporary sets (80% train, 20% temp)
 X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Split the temporary set into validation and test sets (50% validation, 50% test)
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
-# Display the shapes of the resulting datasets
-print("Training set shape:", X_train.shape, y_train.shape)
-print("Validation set shape:", X_val.shape, y_val.shape)
-print("Test set shape:", X_test.shape, y_test.shape)
-# Calculate percentage of missing values for each column in X_train
-missing_percentage_train = (X_train.isnull().sum() / len(X_train)) * 100
+# Define function for missing value handling and feature preprocessing
+def preprocess_data(X):
+    # Define thresholds for missing value categorization
+    high_missing_threshold = 90
+    
+    # List to store feature names based on missing value categories
+    high_missing_features = []
 
-# Display the missing percentage for each column in X_train
-print("Missing percentage for each column in X_train:")
-print(missing_percentage_train)
-# Define thresholds for missing value categorization
-high_missing_threshold = 90
-moderate_missing_threshold_low = 30
-moderate_missing_threshold_high = 90
+    # Iterate through each column and categorize based on missing values
+    for column in X.columns:
+        missing_percentage = (X[column].isnull().sum() / len(X)) * 100
+        if missing_percentage > high_missing_threshold:
+            high_missing_features.append(column)
 
-# List to store feature names based on missing value categories
-high_missing_features = []
-moderate_missing_features = []
-low_missing_features = []
+    # Drop features with high missing values
+    X_cleaned = X.drop(columns=high_missing_features)
 
-# Iterate through each column and categorize based on missing values
-for column in X_train.columns:
-    missing_percentage = (X_train[column].isnull().sum() / len(X_train)) * 100
-    if missing_percentage > high_missing_threshold:
-        high_missing_features.append(column)
-    elif moderate_missing_threshold_low <= missing_percentage <= moderate_missing_threshold_high:
-        moderate_missing_features.append(column)
-    else:
-        low_missing_features.append(column)
+    # Impute missing numerical values with mean
+    numerical_features = X_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    imputer = SimpleImputer(strategy='mean')
+    X_cleaned[numerical_features] = imputer.fit_transform(X_cleaned[numerical_features])
 
-# Print the categorized features
-print("Features with High Missing Values (Above 90%):")
-print(high_missing_features)
-print("\nFeatures with Moderate Missing Values (Between 30% to 90%):")
-print(moderate_missing_features)
-print("\nFeatures with Low or No Missing Values (Below 10%):")
-print(low_missing_features)
-# List of features with high missing values (above 90%)
-features_with_high_missing = ['EtCO2', 'BaseExcess', 'HCO3', 'pH', 'PaCO2', 'SaO2', 
-                              'AST', 'BUN', 'Alkalinephos', 'Calcium', 'Chloride', 
-                              'Creatinine', 'Bilirubin_direct', 'Lactate', 'Magnesium', 
-                              'Phosphate', 'Bilirubin_total', 'TroponinI', 'Hct', 
-                              'Hgb', 'PTT', 'WBC', 'Fibrinogen', 'Platelets']
+    # Identify categorical features
+    categorical_features = X_cleaned.select_dtypes(include=['object']).columns.tolist()
 
-# Drop features with high missing values from X_train
-X_train_cleaned = X_train.drop(columns=features_with_high_missing)
+    # One-hot encode categorical features
+    onehot_encoder = OneHotEncoder(drop=None)
+    X_encoded = onehot_encoder.fit_transform(X_cleaned[categorical_features])
+    X_encoded_df = pd.DataFrame(X_encoded.toarray(), columns=onehot_encoder.get_feature_names_out(categorical_features))
 
-# Reset index after dropping columns
-X_train_cleaned = X_train_cleaned.reset_index(drop=True)
-# Check the shape of X_train after dropping
-print("Shape of X_train after dropping:", X_train_cleaned.shape)
-# Print the list of features after dropping
-print("List of features after dropping:")
-print(X_train_cleaned.columns.tolist())
-# Identify numerical features
-numerical_features = X_train_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
-print("Numerical features:")
-print(numerical_features)
-# Impute missing values with mean
-for feature in numerical_features:
-    mean_value = X_train_cleaned[feature].mean()  # Calculate the mean value
-    X_train_cleaned[feature] = X_train_cleaned[feature].fillna(mean_value)  # Fill NaN values with mean_value
-#Calculate the number of missing values after imputation
-missing_after = X_train_cleaned[numerical_features].isnull().sum()
-print("\nMissing Values After Imputation:")
-print(missing_after)
-# Identify categorical features in X_train
-categorical_features_train = X_train.select_dtypes(include=['object']).columns.tolist()
-print("Categorical features:", categorical_features_train)
-# One-hot encode categorical features for X_train
-onehot_encoder = OneHotEncoder(drop=None)  # Ensure no columns are dropped
-X_train_encoded = onehot_encoder.fit_transform(X_train[categorical_features_train])
-# Convert the encoded array to a DataFrame
-X_train_encoded_df = pd.DataFrame(X_train_encoded.toarray(), columns=onehot_encoder.get_feature_names_out(categorical_features_train))
-# Drop the gender scale column from X_train_cleaned_processed
-X_train_cleaned_processed = X_train_cleaned.drop(columns=['Gender', 'Unit1', 'Unit2'])
-# Concatenate preprocessed features (without gender) with encoded features
-X_train_final = pd.concat([X_train_cleaned_processed.reset_index(drop=True), X_train_encoded_df.reset_index(drop=True)], axis=1)
+    # Drop original categorical columns
+    X_cleaned_processed = X_cleaned.drop(columns=categorical_features)
 
-# Set display format to show two decimal places for floating-point numbers
-pd.options.display.float_format = '{:.2f}'.format
-# Check data types of X_train_final_processed
-print(X_train_final)
-# Step 1: Check data types of columns in X_train_final
-print(X_train_final.dtypes)
-# Check for missing values in X_train_final
-missing_values = X_train_final.isnull().sum()
+    # Concatenate preprocessed features with encoded features
+    X_final = pd.concat([X_cleaned_processed.reset_index(drop=True), X_encoded_df.reset_index(drop=True)], axis=1)
 
-# Print columns with missing values, if any
-print("Columns with missing values:")
-print(missing_values[missing_values > 0])
-# Calculate missing percentage for X_test
-missing_percentage_test = (X_test.isnull().sum() / len(X_test)) * 100
+    return X_final
 
-# Display the missing percentage for each feature in X_test
-print("Missing percentage for each feature in X_test:")
-print(missing_percentage_test)
-# Define thresholds for missing value categorization
-high_missing_threshold = 90
-moderate_missing_threshold_low = 30
-moderate_missing_threshold_high = 90
-
-# List to store feature names based on missing value categories for X_test
-high_missing_features_test = []
-moderate_missing_features_test = []
-low_missing_features_test = []
-
-# Iterate through each column in X_test and categorize based on missing values
-for column in X_test.columns:
-    missing_percentage = (X_test[column].isnull().sum() / len(X_test)) * 100
-    if missing_percentage > high_missing_threshold:
-        high_missing_features_test.append(column)
-    elif moderate_missing_threshold_low <= missing_percentage <= moderate_missing_threshold_high:
-        moderate_missing_features_test.append(column)
-    else:
-        low_missing_features_test.append(column)
-
-# Print the categorized features for X_test
-print("Features with High Missing Values (Above 90%):")
-print(high_missing_features_test)
-print("\nFeatures with Moderate Missing Values (Between 30% to 90%):")
-print(moderate_missing_features_test)
-print("\nFeatures with Low or No Missing Values (Below 10%):")
-print(low_missing_features_test)
-# List of features with high missing values (above 90%) in X_test
-features_with_high_missing_test = ['EtCO2', 'BaseExcess', 'HCO3', 'pH', 'PaCO2', 'SaO2', 
-                                   'AST', 'BUN', 'Alkalinephos', 'Calcium', 'Chloride', 
-                                   'Creatinine', 'Bilirubin_direct', 'Lactate', 'Magnesium', 
-                                   'Phosphate', 'Bilirubin_total', 'TroponinI', 'Hct', 
-                                   'Hgb', 'PTT', 'WBC', 'Fibrinogen', 'Platelets']
-
-# Drop features with high missing values from X_test
-X_test_cleaned = X_test.drop(columns=features_with_high_missing_test)
-
-# Reset index after dropping columns
-X_test_cleaned = X_test_cleaned.reset_index(drop=True)
-# Check the shape of X_test after dropping
-print("Shape of X_test after dropping:", X_test_cleaned.shape)
-# Print the list of features after dropping
-print("List of features after dropping:")
-print(X_test_cleaned.columns.tolist())
-# Identify numerical features
-numerical_features = X_test_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
-print("Numerical features:")
-print(numerical_features)
-# Impute missing values with mean
-for feature in numerical_features:
-    # Calculate the mean once for each feature to avoid recalculating it in each iteration
-    mean_value = X_test_cleaned[feature].mean()
-    X_test_cleaned[feature] = X_test_cleaned[feature].fillna(mean_value)
-
-# Calculate the number of missing values after imputation
-missing_after = X_test_cleaned[numerical_features].isnull().sum()
-print("\nMissing Values After Imputation:")
-print(missing_after)
-# Identify categorical features in X_test
-categorical_features_test = X_test.select_dtypes(include=['object']).columns.tolist()
-print("Categorical features:", categorical_features_test)
-# One-hot encode categorical features for X_test
-onehot_encoder = OneHotEncoder(drop=None)  # Ensure no columns are dropped
-X_test_encoded = onehot_encoder.fit_transform(X_test[categorical_features_test])
-#Perform KNN imputation for encoded categorical features
-knn_imputer = KNNImputer()
-X_test_encoded_imputed = knn_imputer.fit_transform(X_test_encoded.toarray())
-# Convert the encoded array to a DataFrame
-X_test_encoded_df = pd.DataFrame(X_test_encoded.toarray(), columns=onehot_encoder.get_feature_names_out(categorical_features_test))
-print(X_train_encoded_df.head())
-# Drop the gender scale column from X_train_cleaned_processed
-X_test_cleaned_processed = X_test_cleaned.drop(columns=['Gender', 'Unit1', 'Unit2'])
-# Concatenate preprocessed features (without gender) with encoded features
-X_test_final = pd.concat([X_test_cleaned_processed.reset_index(drop=True), X_test_encoded_df.reset_index(drop=True)], axis=1)
-# Set display format to show two decimal places for floating-point numbers
-pd.options.display.float_format = '{:.2f}'.format
-print(X_test_final)
-# Check for missing values in X_train_final
-missing_values = X_test_final.isnull().sum()
-
-# Print columns with missing values, if any
-print("Columns with missing values:")
-print(missing_values[missing_values > 0])
-# Calculate missing percentage for X_val
-missing_percentage_val = (X_val.isnull().sum() / len(X_val)) * 100
-
-# Display the missing percentage for each feature in X_val
-print("Missing percentage for each feature in X_val:")
-print(missing_percentage_val)
-# Define thresholds for missing value categorization
-high_missing_threshold = 90
-moderate_missing_threshold_low = 30
-moderate_missing_threshold_high = 90
-
-# List to store feature names based on missing value categories for X_val
-high_missing_features_val = []
-moderate_missing_features_val = []
-low_missing_features_val = []
-
-# Iterate through each column in X_val and categorize based on missing values
-for column in X_val.columns:
-    missing_percentage = (X_val[column].isnull().sum() / len(X_val)) * 100
-    if missing_percentage > high_missing_threshold:
-        high_missing_features_val.append(column)
-    elif moderate_missing_threshold_low <= missing_percentage <= moderate_missing_threshold_high:
-        moderate_missing_features_val.append(column)
-    else:
-        low_missing_features_val.append(column)
-
-# Print the categorized features for X_val
-print("Features with High Missing Values (Above 90%):")
-print(high_missing_features_val)
-print("\nFeatures with Moderate Missing Values (Between 30% to 90%):")
-print(moderate_missing_features_val)
-print("\nFeatures with Low or No Missing Values (Below 10%):")
-print(low_missing_features_val)
-# List of features with high missing values (above 90%) in X_val
-features_with_high_missing_val = ['EtCO2', 'BaseExcess', 'HCO3', 'pH', 'PaCO2', 'SaO2', 
-                                   'AST', 'BUN', 'Alkalinephos', 'Calcium', 'Chloride', 
-                                   'Creatinine', 'Bilirubin_direct', 'Lactate', 'Magnesium', 
-                                   'Phosphate', 'Bilirubin_total', 'TroponinI', 'Hct', 
-                                   'Hgb', 'PTT', 'WBC', 'Fibrinogen', 'Platelets']
-
-# Drop features with high missing values from X_val
-X_val_cleaned = X_val.drop(columns=features_with_high_missing_val)
-
-# Reset index after dropping columns
-X_val_cleaned = X_val_cleaned.reset_index(drop=True)
-
-print("Shape of X_val after dropping:", X_val_cleaned.shape)
-# Print the list of features after dropping
-print("List of features after dropping:")
-print(X_val_cleaned.columns.tolist())
-# Identify numerical features
-numerical_features = X_val_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
-print("Numerical features:")
-print(numerical_features)
-# Impute missing values with mean
-for feature in numerical_features:
-    # Fill missing values with the mean of the column, without using inplace=True
-    X_val_cleaned[feature] = X_val_cleaned[feature].fillna(X_val_cleaned[feature].mean())
-# Calculate the number of missing values after imputation
-missing_after = X_val_cleaned[numerical_features].isnull().sum()
-print("\nMissing Values After Imputation:")
-print(missing_after)
-# Identify categorical features in X_val
-categorical_features_val = X_val.select_dtypes(include=['object']).columns.tolist()
-print("Categorical features:", categorical_features_val)
-# One-hot encode categorical features for X_test
-onehot_encoder = OneHotEncoder(drop=None)  # Ensure no columns are dropped
-X_val_encoded = onehot_encoder.fit_transform(X_val[categorical_features_val])
-#Perform KNN imputation for encoded categorical features
-knn_imputer = KNNImputer()
-X_val_encoded_imputed = knn_imputer.fit_transform(X_val_encoded.toarray())
-# Convert the encoded array to a DataFrame
-X_val_encoded_df = pd.DataFrame(X_val_encoded.toarray(), columns=onehot_encoder.get_feature_names_out(categorical_features_val))
-print(X_val_encoded_df.head())
-# Drop the gender scale column from X_train_cleaned_processed
-X_val_cleaned_processed = X_val_cleaned.drop(columns=['Gender', 'Unit1', 'Unit2'])
-# Concatenate preprocessed features (without gender) with encoded features
-X_val_final = pd.concat([X_val_cleaned_processed.reset_index(drop=True), X_val_encoded_df.reset_index(drop=True)], axis=1)
-# Set display format to show two decimal places for floating-point numbers
-pd.options.display.float_format = '{:.2f}'.format
-print(X_val_final)
-
+# Preprocess training, validation, and test sets
+X_train_final = preprocess_data(X_train)
+X_val_final = preprocess_data(X_val)
+X_test_final = preprocess_data(X_test)
 
 # Check the Data
 print("Unique labels in y_train:", y_train.unique())
